@@ -34,7 +34,8 @@ export default function Cadastro() {
                 return;
             }
 
-            const response = await fetch("http://localhost:8000/usuarios", {
+            // const response = await fetch("http://localhost:8000/usuarios", {
+            const response = await fetch("http://10.0.10.177:8000/usuarios", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -76,6 +77,7 @@ export default function Cadastro() {
 
                         <View style={estilo.container}>
                             <View style={estilo.Corpo_Elemento}>
+                                <Text style={{marginBottom:50, fontSize:40, fontWeight:"bold"}}>Cadastro</Text>
 
                                 <TextInput
                                     placeholder="Digite seu nome..."
@@ -171,8 +173,8 @@ const estilo = StyleSheet.create({
     Corpo_Elemento: {
         backgroundColor: "white",
         width: 600,
-        height: 450,
-        marginTop: 150,
+        height: 600,
+        marginTop: 80,
         borderRadius: 20,
         alignItems: "center",
         justifyContent: "center"

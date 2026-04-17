@@ -21,14 +21,15 @@ export default function Login() {
                 return;
             }
 
-            const API = await fetch("http://localhost:8000/login", {
+            // const API = await fetch("http://localhost:8000/login", {
+            const API = await fetch("http://10.0.10.177:8000/login", { 
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
                     email: email,
-                    senha: senha
+                    senha: senha,
                 })
             });
 
@@ -41,9 +42,9 @@ export default function Login() {
             }
 
             
-            console.log("Login feito:", data);
+            // console.log("Login feito:", data);
 
-            navigate("Inicio");
+            navigate("Inicio", {usuario: data.usuario});
 
         } catch (error) {
             setErro("Erro de conexão com o servidor");
@@ -62,6 +63,7 @@ export default function Login() {
 
                         <View style={estilo.container}>
                             <View style={estilo.Corpo_Elemento}>
+                                <Text style={{marginBottom:50, fontSize:40, fontWeight:"bold"}}>Login</Text>
 
                                 <TextInput
                                     keyboardType="email-address"
@@ -128,8 +130,8 @@ const estilo = StyleSheet.create({
     Corpo_Elemento: {
         backgroundColor: "white",
         width: 600,
-        height: 400,
-        marginTop: 150,
+        height: 600,
+        marginTop: 80,
         borderRadius: 20,
         alignItems: "center",
         justifyContent: "center"

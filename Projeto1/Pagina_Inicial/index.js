@@ -1,22 +1,29 @@
 import { useState } from "react";
-import {StyleSheet,View,Text,TouchableOpacity,Image,Platform,KeyboardAvoidingView,ScrollView,TextInput} from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import {StyleSheet,View,Text,TouchableOpacity,Image,Platform,KeyboardAvoidingView,ScrollView,TextInput,useWindowDimensions} from "react-native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import Lua from "../assets/Lua_PixelArt.png";
 import Sol from "../assets/Sol_PixelArt.png";
 import Lupa from "../assets/Lupa.png";
 import Logout from "../assets/Logout.png";
-import Lupa_Branca from "../assets/Lupa_Branca.png"
+import Lupa_Branca from "../assets/Lupa_Branca.png";
 
 export default function Inicio() {
+  const { width } = useWindowDimensions();
+  const Mobile = width < 600;
+
+  const route = useRoute();
+
+  const usuario = route.params?.usuario;
+
   const [tema, setTema] = useState("#e9eaecde");
   const [temperatura, setTemperatura] = useState("");
   const [cep, setCep] = useState("");
-  const [Buscarcep, setBuscarCep] = useState("");
+  const [buscarCep, setBuscarCep] = useState("");
   const [cidade, setCidade] = useState("");
 
-  const {navigate} = useNavigation();
-
+  const { navigate } = useNavigation();
 
   function Tema_Escuro() {
     setTema("black");
@@ -28,44 +35,35 @@ export default function Inicio() {
 
   async function Clima() {
     try {
-      
-        if (!cidade || cidade.trim() === "") {
-            setTemperatura("Digite uma Cidade");
-            return;
-        }
-
-        const cidadeFormatada = cidade.trim();
-        const chave_api = "58f396d2f5f7da19ca6303194e4b5dbc";
-
-
-        const buscar_cidade = await fetch(
-        `https://api.openweathermap.org/geo/1.0/direct?q=${cidadeFormatada}&limit=1&appid=${chave_api}`
-        );
-
-        let dados_cidade = await buscar_cidade.json();
-
-        if (!dados_cidade || dados_cidade.length === 0) {
-            setTemperatura("Cidade não encontrada");
-            return;
-        }
-
-        let latitude = dados_cidade[0].lat;
-        let longitude = dados_cidade[0].lon;
-
-        let resposta = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${chave_api}&units=metric&lang=pt_br`
-        );
-
-        let dados_finais = await resposta.json();
-
-        if (!dados_finais.main) {
-            setTemperatura("Erro ao obter temperatura");
+      if (!cidade || cidade.trim() === "") {
+        setTemperatura("Digite uma Cidade");
         return;
-        }
+      }
 
-        setTemperatura(`🌡️ Temperatura: ${dados_finais.main.temp} °C`);
+      const chave_api = "58f396d2f5f7da19ca6303194e4b5dbc";
+
+      const buscar_cidade = await fetch(
+        `https://api.openweathermap.org/geo/1.0/direct?q=${cidade}&limit=1&appid=${chave_api}`
+      );
+
+      const dados_cidade = await buscar_cidade.json();
+
+      if (!dados_cidade.length) {
+        setTemperatura("Cidade não encontrada");
+        return;
+      }
+
+      const { lat, lon } = dados_cidade[0];
+
+      const resposta = await fetch(
+        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${chave_api}&units=metric&lang=pt_br`
+      );
+
+      const dados = await resposta.json();
+
+      setTemperatura(`Temperatura:  ${dados.main.temp} °C`);
     } catch {
-        setTemperatura("Erro ao buscar clima");
+      setTemperatura("Erro ao buscar clima");
     }
   }
 
@@ -76,18 +74,15 @@ export default function Inicio() {
         return;
       }
 
-      let resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      let data = await resposta.json();
+      const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await resposta.json();
 
       if (data.erro) {
         setBuscarCep("CEP não encontrado");
         return;
       }
 
-      setBuscarCep(
-        `${data.localidade} - ${data.uf}\n${data.logradouro}\n${data.bairro}`
-      );
-
+      setBuscarCep(`${data.localidade} - ${data.uf} - ${data.logradouro} - ${data.bairro}`);
       setCidade(data.localidade);
     } catch {
       setBuscarCep("Erro ao buscar CEP");
@@ -100,155 +95,155 @@ export default function Inicio() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View style={{ backgroundColor: tema, flex: 1 }}>
+        <View style={{ flex: 1, backgroundColor: tema }}>
 
-         {/* NAVBAR */}
-          <View style={estilo.NavBar}> 
-
-            {/* Logout */}            
-            
-            {/* <TouchableOpacity onPress={()=>navigate("Cadastro")}> */}
-            <TouchableOpacity onPress={()=>navigate("Login")}>
-              <Image source={Logout} style={estilo.Imagem_Logout} />
+          {/* NAVBAR */}
+          <SafeAreaView style={styles.navbar}>
+            <TouchableOpacity onPress={() => navigate("Login")}>
+              <Image source={Logout} style={styles.icon} />
             </TouchableOpacity>
 
-            {/* Tema */}
+            <Text style={{color:"white", fontSize:20, fontWeight:"bold"}}>Olá, {usuario?.nome || "Usuário"}</Text>
+
             <TouchableOpacity onPress={tema === "#e9eaecde" ? Tema_Escuro : Tema_Claro}>
               <Image
                 source={tema === "#e9eaecde" ? Lua : Sol}
-                style={tema === "#e9eaecde" ? estilo.Imagem_Lua : estilo.Imagem_Sol}
+                style={styles.icon}
               />
             </TouchableOpacity>
-           
-            
-          </View>
-          {/* CORPO PRINCIPAL */}
-          <View style={estilo.container}> 
+          </SafeAreaView>
 
-            {/* Clima */}
-            <View style={[estilo.bloco, estilo.Corpo_Elemento,{
-              backgroundColor: tema === "#e9eaecde" ? "white": "#1F1F1F"
-            }]}> 
-                <View style={{marginBottom:40}}>
-                    <Text style={{fontSize:50, fontWeight:"bold", color: tema === "#e9eaecde"?"#1F1F1F":"white"}}>Busque sua Cidade</Text>
-                </View>
-                
-                <TextInput
-                    placeholder="Digite o nome da cidade..."
-                    onChangeText={(valor) => setCidade(valor)}
-                    style={[estilo.input, {
-                        color: tema === "#e9eaecde" ? "black":"white",
-                        borderColor: tema === "#e9eaecde" ? "black":"white"
-                      }
-                    ]}
-                />
+          {/* CONTAINER */}
+          <View
+            style={[
+              styles.container,
+              { flexDirection: Mobile ? "column" : "row" }
+            ]}
+          >
 
-                <TouchableOpacity onPress={Clima}>
-                    <Image source={tema === "#e9eaecde" ? Lupa : Lupa_Branca} style={estilo.lupa} />
-                </TouchableOpacity>
+            {/* CLIMA */}
+            <View
+              style={[
+                styles.card,
+                {
+                  width: Mobile ? "90%" : 400,
+                  backgroundColor: tema === "#e9eaecde" ? "white" : "#1F1F1F"
+                }
+              ]}
+            >
+              <Text style={[styles.titulo, { color: tema === "#e9eaecde" ? "black" : "white" }]}>
+                Insira a Cidade
+              </Text>
 
-                <Text style={{color:tema === "#e9eaecde" ? "black" : "white", marginTop:50, fontSize:20}}>{temperatura}</Text>
+              <TextInput
+                placeholder="Digite a cidade"
+                placeholderTextColor="gray"
+                onChangeText={setCidade}
+                style={[styles.input, {
+                  color: tema === "#e9eaecde" ? "black" : "white",
+                  borderColor: tema === "#e9eaecde" ? "black" : "white"
+                }]}
+              />
+
+              <TouchableOpacity onPress={Clima}>
+                <Image source={tema === "#e9eaecde" ? Lupa : Lupa_Branca} style={styles.lupa} />
+              </TouchableOpacity>
+
+              <Text style={{ color: tema === "#e9eaecde" ? "black" : "white" }}>
+                {temperatura}
+              </Text>
             </View>
 
-
             {/* CEP */}
-            <View style={[estilo.bloco, estilo.Corpo_Elemento,{
-              backgroundColor: tema === "#e9eaecde" ? "white": "#1F1F1F"
-            }]}> 
+            <View
+              style={[
+                styles.card,
+                {
+                  width: Mobile ? "90%" : 400,
+                  backgroundColor: tema === "#e9eaecde" ? "white" : "#1F1F1F"
+                }
+              ]}
+            >
+              <Text style={[styles.titulo, { color: tema === "#e9eaecde" ? "black" : "white" }]}>
+                Insira o CEP
+              </Text>
 
-              <View style={{marginBottom:40}}>
-                    <Text style={{fontSize:50, fontWeight:"bold", color: tema === "#e9eaecde"?"#1F1F1F":"white"}}>Busque seu CEP</Text>
-              </View>
               <TextInput
-                placeholder="Digite o CEP..."
+                placeholder="Digite o CEP"
                 keyboardType="numeric"
-                onChangeText={(valor) => setCep(valor)}
-                style={[estilo.input, {
-                    color: tema === "#e9eaecde" ? "black":"white",
-                    borderColor: tema === "#e9eaecde" ? "black":"white"
-                  }
-                ]}
+                placeholderTextColor="gray"
+                onChangeText={setCep}
+                style={[styles.input, {
+                  color: tema === "#e9eaecde" ? "black" : "white",
+                  borderColor: tema === "#e9eaecde" ? "black" : "white"
+                }]}
               />
 
               <TouchableOpacity onPress={Cep}>
-                    <Image source={tema === "#e9eaecde" ? Lupa : Lupa_Branca} style={estilo.lupa} />
+                <Image source={tema === "#e9eaecde" ? Lupa : Lupa_Branca} style={styles.lupa} />
               </TouchableOpacity>
 
-              <Text style={{color:tema === "#e9eaecde" ? "black" : "white", marginTop:50, fontSize:20}}>{Buscarcep}</Text>
+              <Text style={{ color: tema === "#e9eaecde" ? "black" : "white" }}>
+                {buscarCep}
+              </Text>
             </View>
 
           </View>
-
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const estilo = StyleSheet.create({
-  NavBar: {
-    backgroundColor: "blue",
-    width: "100%",
+const styles = StyleSheet.create({
+  navbar: {
+    width:"100%",
     height: 100,
+    backgroundColor: "blue",
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20
   },
 
   container: {
     flex: 1,
-    marginTop: 120,
-    alignItems: "center"
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 20
   },
 
-  bloco: {
+  card: {
+    padding: 20,
+    borderRadius: 20,
     alignItems: "center",
-    marginBottom: 30
+    marginVertical: 20
+  },
+
+  titulo: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 20
   },
 
   input: {
+    width: "100%",
+    height: 50,
     borderWidth: 2,
-    width: 350,
-    height: 80,
+    borderRadius: 10,
     textAlign: "center",
-    marginBottom: 10,
-    borderRadius: 20
+    marginBottom: 10
   },
 
   lupa: {
     width: 40,
     height: 40,
-    position:"absolute",
-    left:200,
-    bottom:30
+    marginBottom: 10
   },
 
-  Imagem_Lua: {
-    width: 50,
-    height: 50,
-    resizeMode: "contain",
-  },
-
-  Imagem_Sol: {
-    width: 60,
-    height: 50,
-    resizeMode: "contain"
-  },
-
-  Imagem_Logout: {
+  icon: {
     width: 40,
     height: 40,
     resizeMode: "contain"
-  },
-  Corpo_Elemento:{
-    backgroundColor:"white",
-    width:600,
-    height:400,
-    borderRadius:20,
-    alignItems:"center",
-    justifyContent:"flex-start",
-    paddingTop:20,
-    marginBottom:200,
   }
 });

@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 import { View} from 'react-native';
 import Cadastro from './Cadastro';
 import Inicio from './Pagina_Inicial';
@@ -6,12 +7,14 @@ import{createNativeStackNavigator} from "@react-navigation/native-stack";
 import Login from './Login';
 import { StatusBar } from 'expo-status-bar';
 
+
 const Stack = createNativeStackNavigator();
 export default function App() {
 
   return (
-    <View style={{flex:1}}>
-      <StatusBar style="auto"/>
+    <>
+      <StatusBar style="dark" />
+
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Login">
           <Stack.Screen name='Inicio' component={Inicio} options={{headerShown:false}}/>
@@ -19,6 +22,6 @@ export default function App() {
           <Stack.Screen name='Cadastro' component={Cadastro} options={{headerShown:false}}/>
         </Stack.Navigator>
       </NavigationContainer>
-    </View>
+    </>
   );
 }
