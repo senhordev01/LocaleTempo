@@ -1,29 +1,33 @@
-import { useState } from "react";
-import {StyleSheet,View,Text,TouchableOpacity,Image,Platform,KeyboardAvoidingView,ScrollView,TextInput,useWindowDimensions} from "react-native";
+import { useEffect, useState } from "react";
+import {StyleSheet,View,Text,TouchableOpacity,Image,Platform,KeyboardAvoidingView,ScrollView,TextInput,useWindowDimensions,Modal,FlatList} from "react-native";
+
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import Lua from "../assets/Lua_PixelArt.png";
 import Sol from "../assets/Sol_PixelArt.png";
-import Lupa from "../assets/Lupa.png";
 import Logout from "../assets/Logout.png";
-import Lupa_Branca from "../assets/Lupa_Branca.png";
+
+const API = "http://10.0.10.177:8080/livros";
 
 export default function Inicio() {
   const { width } = useWindowDimensions();
   const Mobile = width < 600;
 
   const route = useRoute();
-
   const usuario = route.params?.usuario;
 
-  const [tema, setTema] = useState("#e9eaecde");
-  const [temperatura, setTemperatura] = useState("");
-  const [cep, setCep] = useState("");
-  const [buscarCep, setBuscarCep] = useState("");
-  const [cidade, setCidade] = useState("");
-
   const { navigate } = useNavigation();
+
+  const [tema, setTema] = useState("#e9eaecde");
+
+  const [modal, setModal] = useState(false);
+
+  const [livros, setLivros] = useState([]);
+
+  const [nome, setNome] = useState("");
+  const [genero, setGenero] = useState("");
+  const [editId, setEditId] = useState(null);
 
   function Tema_Escuro() {
     setTema("black");
@@ -33,67 +37,67 @@ export default function Inicio() {
     setTema("#e9eaecde");
   }
 
-  async function Clima() {
+  async function carregarLivros() {
     try {
-      if (!cidade || cidade.trim() === "") {
-        setTemperatura("Digite uma Cidade");
-        return;
-      }
-
-      const chave_api = "58f396d2f5f7da19ca6303194e4b5dbc";
-
-      const buscar_cidade = await fetch(
-        `https://api.openweathermap.org/geo/1.0/direct?q=${cidade}&limit=1&appid=${chave_api}`
-      );
-
-      const dados_cidade = await buscar_cidade.json();
-
-      if (!dados_cidade.length) {
-        setTemperatura("Cidade não encontrada");
-        return;
-      }
-
-      const { lat, lon } = dados_cidade[0];
-
-      const resposta = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${chave_api}&units=metric&lang=pt_br`
-      );
-
-      const dados = await resposta.json();
-
-      setTemperatura(`Temperatura:  ${dados.main.temp} °C`);
-    } catch {
-      setTemperatura("Erro ao buscar clima");
+      const res = await fetch(API);
+      const data = await res.json();
+      setLivros(data);
+    } catch (err) {
+      console.log(err);
     }
   }
 
-  async function Cep() {
+  useEffect(() => {
+    carregarLivros();
+  }, []);
+
+  async function salvarLivro() {
+    if (!nome || !genero) return;
+
     try {
-      if (!cep) {
-        setBuscarCep("Digite um CEP");
-        return;
+      if (editId) {
+        await fetch(`${API}/${editId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, genero })
+        });
+      } else {
+        await fetch(API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome, genero })
+        });
       }
 
-      const resposta = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await resposta.json();
-
-      if (data.erro) {
-        setBuscarCep("CEP não encontrado");
-        return;
-      }
-
-      setBuscarCep(`${data.localidade} - ${data.uf} - ${data.logradouro} - ${data.bairro}`);
-      setCidade(data.localidade);
-    } catch {
-      setBuscarCep("Erro ao buscar CEP");
+      setNome("");
+      setGenero("");
+      setEditId(null);
+      setModal(false);
+      carregarLivros();
+    } catch (err) {
+      console.log(err);
     }
   }
+
+  async function deletar(id) {
+    await fetch(`${API}/${id}`, {
+      method: "DELETE"
+    });
+
+    carregarLivros();
+  }
+
+  function editar(item) {
+    setNome(item.nome);
+    setGenero(item.genero);
+    setEditId(item._id);
+    setModal(true);
+  }
+
+  const isDark = tema === "black";
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
         <View style={{ flex: 1, backgroundColor: tema }}>
 
@@ -103,9 +107,13 @@ export default function Inicio() {
               <Image source={Logout} style={styles.icon} />
             </TouchableOpacity>
 
-            <Text style={{color:"white", fontSize:20, fontWeight:"bold"}}>Olá, {usuario?.nome || "Usuário"}</Text>
+            <Text style={{ color: "white", fontSize: Mobile ? 16 : 20, fontWeight: "bold" }}>
+              Olá, {usuario?.nome || "Usuário"}
+            </Text>
 
-            <TouchableOpacity onPress={tema === "#e9eaecde" ? Tema_Escuro : Tema_Claro}>
+            <TouchableOpacity
+              onPress={tema === "#e9eaecde" ? Tema_Escuro : Tema_Claro}
+            >
               <Image
                 source={tema === "#e9eaecde" ? Lua : Sol}
                 style={styles.icon}
@@ -113,91 +121,110 @@ export default function Inicio() {
             </TouchableOpacity>
           </SafeAreaView>
 
-          {/* CONTAINER */}
-          <View
-            style={[
-              styles.container,
-              { flexDirection: Mobile ? "column" : "row" }
-            ]}
+          {/* LISTA */}
+          <FlatList
+            data={livros}
+            keyExtractor={(item) => item._id}
+            contentContainerStyle={{ padding: 20 }}
+            style={{ backgroundColor: isDark ? "#1F1F1F" : "transparent" }} // 🔥 AQUI
+            renderItem={({ item }) => (
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: isDark ? "#2A2A2A" : "#fff",
+                    width: Mobile ? "100%" : "90%",
+                    alignSelf: "center"
+                  }
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: Mobile ? 16 : 18,
+                    fontWeight: "bold",
+                    color: isDark ? "white" : "black"
+                  }}
+                >
+                  {item.nome}
+                </Text>
+
+                <Text style={{ color: isDark ? "#ccc" : "#333" }}>
+                  {item.genero}
+                </Text>
+
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                  <TouchableOpacity
+                    style={styles.btnEditar}
+                    onPress={() => editar(item)}
+                  >
+                    <Text style={{ color: "white" }}>Editar</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.btnDelete}
+                    onPress={() => deletar(item._id)}
+                  >
+                    <Text style={{ color: "white" }}>Deletar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          />
+
+          {/* BOTÃO FLUTUANTE */}
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={() => {
+              setNome("");
+              setGenero("");
+              setEditId(null);
+              setModal(true);
+            }}
           >
+            <Text style={{ color: "white", fontSize: 40, fontWeight: "bold", marginBottom: 5 }}>+</Text>
+          </TouchableOpacity>
 
-            {/* CLIMA */}
-            <View
-              style={[
-                styles.card,
-                {
-                  width: Mobile ? "90%" : 400,
-                  backgroundColor: tema === "#e9eaecde" ? "white" : "#1F1F1F"
-                }
-              ]}
-            >
-              <Text style={[styles.titulo, { color: tema === "#e9eaecde" ? "black" : "white" }]}>
-                Insira a Cidade
-              </Text>
+          {/* MODAL */}
+          <Modal visible={modal} transparent animationType="slide">
+            <View style={styles.modal}>
+              <View style={styles.modalBox}>
 
-              <TextInput
-                placeholder="Digite a cidade"
-                placeholderTextColor="gray"
-                onChangeText={setCidade}
-                style={[styles.input, {
-                  color: tema === "#e9eaecde" ? "black" : "white",
-                  borderColor: tema === "#e9eaecde" ? "black" : "white"
-                }]}
-              />
+                <TextInput
+                  placeholder="Nome"
+                  value={nome}
+                  onChangeText={setNome}
+                  style={styles.input}
+                />
 
-              <TouchableOpacity onPress={Clima}>
-                <Image source={tema === "#e9eaecde" ? Lupa : Lupa_Branca} style={styles.lupa} />
-              </TouchableOpacity>
+                <TextInput
+                  placeholder="Gênero"
+                  value={genero}
+                  onChangeText={setGenero}
+                  style={styles.input}
+                />
 
-              <Text style={{ color: tema === "#e9eaecde" ? "black" : "white" }}>
-                {temperatura}
-              </Text>
+                <TouchableOpacity style={styles.btnSalvar} onPress={salvarLivro}>
+                  <Text style={{ color: "white" }}>
+                    {editId ? "Atualizar" : "Salvar"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity onPress={() => setModal(false)}>
+                  <Text style={{ marginTop: 10, color:"#cc1f00"}}>Fechar</Text>
+                </TouchableOpacity>
+
+              </View>
             </View>
+          </Modal>
 
-            {/* CEP */}
-            <View
-              style={[
-                styles.card,
-                {
-                  width: Mobile ? "90%" : 400,
-                  backgroundColor: tema === "#e9eaecde" ? "white" : "#1F1F1F"
-                }
-              ]}
-            >
-              <Text style={[styles.titulo, { color: tema === "#e9eaecde" ? "black" : "white" }]}>
-                Insira o CEP
-              </Text>
-
-              <TextInput
-                placeholder="Digite o CEP"
-                keyboardType="numeric"
-                placeholderTextColor="gray"
-                onChangeText={setCep}
-                style={[styles.input, {
-                  color: tema === "#e9eaecde" ? "black" : "white",
-                  borderColor: tema === "#e9eaecde" ? "black" : "white"
-                }]}
-              />
-
-              <TouchableOpacity onPress={Cep}>
-                <Image source={tema === "#e9eaecde" ? Lupa : Lupa_Branca} style={styles.lupa} />
-              </TouchableOpacity>
-
-              <Text style={{ color: tema === "#e9eaecde" ? "black" : "white" }}>
-                {buscarCep}
-              </Text>
-            </View>
-
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   navbar: {
-    width:"100%",
+    width: "100%",
     height: 100,
     backgroundColor: "blue",
     flexDirection: "row",
@@ -206,44 +233,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20
   },
 
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 20
-  },
-
-  card: {
-    padding: 20,
-    borderRadius: 20,
-    alignItems: "center",
-    marginVertical: 20
-  },
-
-  titulo: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 20
-  },
-
-  input: {
-    width: "100%",
-    height: 50,
-    borderWidth: 2,
-    borderRadius: 10,
-    textAlign: "center",
-    marginBottom: 10
-  },
-
-  lupa: {
-    width: 40,
-    height: 40,
-    marginBottom: 10
-  },
-
   icon: {
     width: 40,
     height: 40,
     resizeMode: "contain"
+  },
+
+  card: {
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 10
+  },
+
+  fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 30,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "blue",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 5
+  },
+
+  modal: {
+    flex: 1,
+    backgroundColor: "#000000aa",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+
+  modalBox: {
+    width: "80%",
+    backgroundColor: "white",
+    padding: 20,
+    borderRadius: 10
+  },
+
+  input: {
+    borderWidth: 1,
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 8
+  },
+
+  btnSalvar: {
+    backgroundColor: "green",
+    padding: 10,
+    alignItems: "center",
+    borderRadius: 8
+  },
+
+  btnEditar: {
+    backgroundColor: "orange",
+    padding: 8,
+    borderRadius: 5
+  },
+
+  btnDelete: {
+    backgroundColor: "red",
+    padding: 8,
+    borderRadius: 5
   }
 });
